@@ -12,10 +12,10 @@ class ChatRequest(BaseModel):
 @app.post("/v1/chat")
 async def chat_endpoint(request: ChatRequest):
     try:
-        # Calls the distributed free community server via the library
+        # FIXED: Pass 'prompt' keyword argument directly instead of 'messages'
         response = client.chat(
             model=request.model, 
-            messages=[{"role": "user", "content": request.prompt}]
+            prompt=request.prompt
         )
         return {"response": response}
     except Exception as e:
