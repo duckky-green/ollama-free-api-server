@@ -11,15 +11,34 @@ class ChatRequest(BaseModel):
 
 @app.post("/v1/chat")
 async def chat_endpoint(request: ChatRequest):
-    try:
-        # FIXED: Pass 'prompt' keyword argument directly instead of 'messages'
-        response = client.chat(
-            model=request.model, 
-            prompt=request.prompt
-        )
-        return {"response": response}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    # Order of backup models to try if the requested one is down
+    fallback_models = [request.model, "llama3", "mistral", "qwen", "phi3"]
+    
+    last_error = ""
+    
+    # Loop through models until one works
+    for model_name in fallback_models:
+        try:
+            response = client.chat(
+                model=model_name, 
+                prompt=request.prompt
+            )
+            # If successful, return the response along with the model that actually answered
+            return {
+                "status": "success",
+                "model_used": model_name,
+                "response": response
+            }
+        except Exception as e:
+            last_error = str(e)
+            print(f"Model '{model_name}' failed or unavailable. Trying next...")
+            continue
+            
+    # If absolutely every model fails, raise the final error
+    raise HTTPException(
+        status_code=500, 
+        detail=f"All available community models are currently offline. Last error: {last_error}"
+    )
 
 if __name__ == "__main__":
     import uvicorn
